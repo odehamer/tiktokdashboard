@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Live Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            height: 80vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+        }
+        
+        .status {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 8px;
+        }
+        
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #667eea;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .username {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 14px;
+        }
+        
+        .text {
+            color: #333;
+            font-size: 14px;
+            margin-top: 4px;
+            word-wrap: break-word;
+        }
+        
+        .timestamp {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+        
+        .gift {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .like {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .status-message {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            margin: 10px 0;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>TikTok Live Chat</h1>
+            <div class="status" id="status">Connecting...</div>
+        </div>
+        <div class="chat-container" id="chatContainer"></div>
+    </div>
+    
+    <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const statusDiv = document.getElementById('status');
+        
+        // Connect to WebSocket
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+        const gifters = [];
+        
+        ws.onopen = () => {
+            console.log('Connected to server');
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log('Received:', data);
+            
+            switch(data.type) {
+                case 'chat':
+                    displayChatMessage(data);
+                    break;
+                case 'gift':
+                    displayGiftMessage(data);
+                    break;
+                case 'like':
+                    displayLikeMessage(data);
+                    break;
+                case 'status':
+                    updateStatus(data.message);
+                    break;
+                case 'error':
+                    displayError(data.message);
+                    break;
+            }
+        };
+        
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            displayError('Connection error');
+        };
+        
+        ws.onclose = () => {
+            displayError('Disconnected from server');
+        };
+        
+        function displayChatMessage(data) {
+            const messageDiv = createMessageElement('message');
+            
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar';
+            if (data.avatar) {
+                const img = document.createElement('img');
+                img.src = data.avatar;
+                avatarDiv.appendChild(img);
+            } else {
+                avatarDiv.textContent = data.user.charAt(0).toUpperCase();
+            }
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            const usernameSpan = document.createElement('div');
+            usernameSpan.className = 'username';
+            usernameSpan.textContent = data.user;
+            
+            const textSpan = document.createElement('div');
+            textSpan.className = 'text';
+            textSpan.textContent = data.comment;
+            
+            const timestampSpan = document.createElement('div');
+            timestampSpan.className = 'timestamp';
+            timestampSpan.textContent = data.timestamp;
+            
+            contentDiv.appendChild(usernameSpan);
+            contentDiv.appendChild(textSpan);
+            contentDiv.appendChild(timestampSpan);
+            
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(contentDiv);
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            if (data.user in gifters || data.user === "odehamer") {
+                messageDiv.style.backgroundColor = '#fff0f6';
+                const msg = new SpeechSynthesisUtterance(data.comment);
+                speechSynthesis.speak(msg);
+            }
+            
+        }
+        
+        function displayGiftMessage(data) {
+            const messageDiv = createMessageElement('message gift');
+            messageDiv.innerHTML = `<strong>${data.user}</strong> sent ${data.count}x ${data.gift} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        function displayLikeMessage(data) {
+            const messageDiv = createMessageElement('message like');
+            messageDiv.innerHTML = `<strong>${data.user}</strong> liked! ❤️ (${data.likeCount}) <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            gifters.push(data.user);
+        }
+        
+        function updateStatus(message) {
+            statusDiv.textContent = message;
+        }
+        
+        function displayError(message) {
+            const messageDiv = createMessageElement('error');
+            messageDiv.textContent = '⚠️ ' + message;
+            chatContainer.appendChild(messageDiv);
+        }
+        
+        function createMessageElement(className) {
+            const div = document.createElement('div');
+            div.className = className;
+            return div;
+        }
+    </script>
+</body>
+</html>
