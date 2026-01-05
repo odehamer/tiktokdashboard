@@ -1,0 +1,23 @@
+# Node.js
+npm-debug.log
+yarn-error.log
+
+# Git
+.git
+.gitignore
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+LICENSE
+*.md
