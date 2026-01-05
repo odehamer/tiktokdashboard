@@ -154,7 +154,9 @@
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const ws = new WebSocket(`${protocol}//${window.location.host}`);
 
-        const gifters = [];
+        const ttsQueue = [];
+        const followers = [];
+        let ttsAfterFollow = false;
         
         ws.onopen = () => {
             console.log('Connected to server');
@@ -173,6 +175,9 @@
                     break;
                 case 'like':
                     displayLikeMessage(data);
+                    break;
+                case 'follow':
+                    displayFollowMessage(data);
                     break;
                 case 'status':
                     updateStatus(data.message);
@@ -229,7 +234,7 @@
             
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            if (data.user in gifters || data.user === "odehamer") {
+            if (ttsQueue.includes(data.user)) {
                 messageDiv.style.backgroundColor = '#fff0f6';
                 const msg = new SpeechSynthesisUtterance(data.comment);
                 speechSynthesis.speak(msg);
@@ -249,7 +254,18 @@
             messageDiv.innerHTML = `<strong>${data.user}</strong> liked! ❤️ (${data.likeCount}) <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            gifters.push(data.user);
+            ttsQueue.push(data.user);
+        }
+
+        function displayFollowMessage(data) {
+            const messageDiv = createMessageElement('message status-message');
+            messageDiv.innerHTML = `🎉 <strong>${data.user}</strong> just followed! <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            if (ttsAfterFollow && !followers.includes(data.user)) {
+                followers.push(data.user);
+                ttsQueue.push(data.user)
+            }
         }
         
         function updateStatus(message) {
@@ -268,5 +284,16 @@
             return div;
         }
     </script>
+
+    <div>
+        <input type="checkbox" id="ttsToggleFollow"/>
+        <label for="ttsToggleFollow">Give TTS after follow</label>
+        <script>
+            const ttsToggleFollow = document.getElementById('ttsToggleFollow');
+            ttsToggleFollow.addEventListener('change', (e) => {
+                ttsAfterFollow = e.target.checked;
+            });
+        </script>
+    </div>
 </body>
 </html>

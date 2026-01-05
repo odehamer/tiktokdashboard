@@ -3,6 +3,7 @@ import express from 'express';
 import { readFile } from 'node:fs/promises';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
+import { type } from 'node:os';
 
 const app = express();
 const httpServer = createServer(app);
@@ -30,7 +31,7 @@ app.post('/dashboard', async (req, res) => {
         tiktokConnection.disconnect();
     }
     
-    connectToTikTok();
+    connectToTikTok();s
     res.redirect('/dashboard');
 });
 
@@ -58,7 +59,6 @@ function broadcast(data) {
 }
 
 // TikTok Live Connection
-// const tiktokUsername = "mig_5164cr";
 
 function connectToTikTok() {
     tiktokConnection = new TikTokLiveConnection(tiktokUsername);
@@ -105,6 +105,16 @@ function connectToTikTok() {
             likeCount: data.likeCount,
             timestamp: new Date().toLocaleTimeString()
         });
+    });
+
+    tiktokConnection.on(WebcastEvent.FOLLOW, data => {
+        const follow = {
+            type: 'follow',
+            user: data.user.uniqueId,
+            timestamp: new Date().toLocaleTimeString()
+        };
+        console.log(`[FOLLOW] ${data.user.uniqueId} followed`);
+        broadcast(follow);
     });
     
     // Disconnection
