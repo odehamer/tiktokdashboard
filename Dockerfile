@@ -5,9 +5,9 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files and node_modules
-# Note: node_modules is copied from host due to npm install issues in Alpine
-# with the tiktok-live-connector package. For production, ensure dependencies 
-# are installed on the host system before building the image.
+# Note: node_modules is copied from host due to npm "Exit handler never called" error
+# when installing tiktok-live-connector package in Alpine Linux (npm bug in v10.8.2).
+# Workaround: Run 'npm install' on host before building the Docker image.
 COPY package*.json ./
 COPY node_modules ./node_modules
 
