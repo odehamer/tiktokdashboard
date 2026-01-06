@@ -1,15 +1,15 @@
-import { TikTokLiveConnection, WebcastEvent } from 'tiktok-live-connector';
 import express from 'express';
-import { readFile } from 'node:fs/promises';
-import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
-import { type } from 'node:os';
+import { readFile } from 'node:fs/promises';
+import { TikTokLiveConnection, WebcastEvent } from 'tiktok-live-connector';
+import { WebSocketServer } from 'ws';
 
 const app = express();
 const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
 
-let tiktokConnection = null;
+// Map of TikTok username -> { connection, clients: Set<WebSocket> }
+const tiktokConnections = new Map();
 
 app.use(express.json());
 
@@ -21,106 +21,176 @@ app.get('/dashboard', async (req, res) => {
     res.send(await readFile('./dashboard.html', 'utf8'));
 });
 
-let tiktokUsername = '';
-
-app.post('/dashboard', async (req, res) => {
-    console.log(req.body.username);
-    tiktokUsername = req.body.username;
-
-    if (tiktokConnection && tiktokConnection.isConnected) {
-        tiktokConnection.disconnect();
-    }
-    
-    connectToTikTok();s
-    res.redirect('/dashboard');
-});
-
 // WebSocket connection handler
-wss.on('connection', function connection(ws) {
+wss.on('connection', function connection(ws, req) {
     console.log('Browser connected');
-    
-    // Send connection status
-    if (tiktokConnection && tiktokConnection.isConnected) {
-        ws.send(JSON.stringify({ type: 'status', message: 'Connected to TikTok live' }));
+
+    // Extract username from query parameter
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const tiktokUsername = url.searchParams.get('username');
+
+    if (tiktokUsername) {
+        console.log(`Connecting to TikTok user: ${tiktokUsername}`);
+
+        // Store the username on the WebSocket for later reference
+        ws.tiktokUsername = tiktokUsername;
+
+        // Check if we already have a connection for this user
+        if (tiktokConnections.has(tiktokUsername)) {
+            // Add this client to the existing connection's client set
+            const connectionInfo = tiktokConnections.get(tiktokUsername);
+            connectionInfo.clients.add(ws);
+
+            // Send status to just this client
+            if (connectionInfo.connection.isConnected) {
+                ws.send(
+                    JSON.stringify({
+                        type: 'status',
+                        message: `Connected to @${tiktokUsername}`,
+                    })
+                );
+            }
+        } else {
+            // Create new connection for this user
+            connectToTikTok(tiktokUsername, ws);
+        }
+    } else {
+        ws.send(
+            JSON.stringify({ type: 'error', message: 'No username provided' })
+        );
     }
-    
+
     ws.on('close', () => {
         console.log('Browser disconnected');
+
+        // Remove this client from the TikTok connection
+        if (ws.tiktokUsername && tiktokConnections.has(ws.tiktokUsername)) {
+            const connectionInfo = tiktokConnections.get(ws.tiktokUsername);
+            connectionInfo.clients.delete(ws);
+
+            // If no more clients watching this user, disconnect from TikTok
+            if (connectionInfo.clients.size === 0) {
+                console.log(
+                    `No more clients for @${ws.tiktokUsername}, disconnecting from TikTok`
+                );
+                if (connectionInfo.connection.isConnected) {
+                    connectionInfo.connection.disconnect();
+                }
+                tiktokConnections.delete(ws.tiktokUsername);
+            }
+        }
     });
 });
 
-// Function to broadcast to all connected browsers
-function broadcast(data) {
-    wss.clients.forEach(client => {
-        if (client.readyState === 1) { // 1 = OPEN
-            client.send(JSON.stringify(data));
-        }
-    });
+// Function to broadcast to all clients watching a specific TikTok user
+function broadcastToUser(tiktokUsername, data) {
+    const connectionInfo = tiktokConnections.get(tiktokUsername);
+    if (connectionInfo) {
+        connectionInfo.clients.forEach((client) => {
+            // 1 = OPEN
+            if (client.readyState === 1) {
+                client.send(JSON.stringify(data));
+            }
+        });
+    }
 }
 
 // TikTok Live Connection
 
-function connectToTikTok() {
-    tiktokConnection = new TikTokLiveConnection(tiktokUsername);
-    
-    tiktokConnection.connect().then(state => {
-        console.info(`Connected to TikTok roomId ${state.roomId}`);
-        broadcast({ type: 'status', message: `Connected to @${tiktokUsername}` });
-    }).catch(err => {
-        console.error('Failed to connect to TikTok:', err);
-        broadcast({ type: 'error', message: 'Failed to connect to TikTok live' });
-    });
-    
+function connectToTikTok(tiktokUsername, initialClient) {
+    const tiktokConnection = new TikTokLiveConnection(tiktokUsername);
+
+    // Store connection info with initial client
+    const connectionInfo = {
+        connection: tiktokConnection,
+        clients: new Set([initialClient]),
+    };
+    tiktokConnections.set(tiktokUsername, connectionInfo);
+
+    tiktokConnection
+        .connect()
+        .then((state) => {
+            console.info(
+                `Connected to TikTok @${tiktokUsername} roomId ${state.roomId}`
+            );
+            broadcastToUser(tiktokUsername, {
+                type: 'status',
+                message: `Connected to @${tiktokUsername}`,
+            });
+        })
+        .catch((err) => {
+            console.error(
+                `Failed to connect to TikTok @${tiktokUsername}:`,
+                err
+            );
+            broadcastToUser(tiktokUsername, {
+                type: 'error',
+                message: 'Failed to connect to TikTok live',
+            });
+            // Clean up failed connection
+            tiktokConnections.delete(tiktokUsername);
+        });
+
     // Chat messages
-    tiktokConnection.on(WebcastEvent.CHAT, data => {
+    tiktokConnection.on(WebcastEvent.CHAT, (data) => {
         const message = {
             type: 'chat',
             user: data.user.uniqueId,
             avatar: data.user.profilePictureUrl,
             comment: data.comment,
-            timestamp: new Date().toLocaleTimeString()
+            timestamp: new Date().toLocaleTimeString(),
         };
-        console.log(`[CHAT] ${data.user.uniqueId}: ${data.comment}`);
-        broadcast(message);
+        console.log(
+            `[@${tiktokUsername}] [CHAT] ${data.user.uniqueId}: ${data.comment}`
+        );
+        broadcastToUser(tiktokUsername, message);
     });
-    
+
     // Gifts
-    tiktokConnection.on(WebcastEvent.GIFT, data => {
+    tiktokConnection.on(WebcastEvent.GIFT, (data) => {
         const gift = {
             type: 'gift',
             user: data.user.uniqueId,
             gift: data.giftName,
             count: data.repeatCount,
-            timestamp: new Date().toLocaleTimeString()
+            timestamp: new Date().toLocaleTimeString(),
         };
-        console.log(`[GIFT] ${data.user.uniqueId} sent ${data.giftName}`);
-        broadcast(gift);
+        console.log(
+            `[@${tiktokUsername}] [GIFT] ${data.user.uniqueId} sent ${data.giftName}`
+        );
+        broadcastToUser(tiktokUsername, gift);
     });
-    
+
     // Likes
-    tiktokConnection.on(WebcastEvent.LIKE, data => {
-        broadcast({
+    tiktokConnection.on(WebcastEvent.LIKE, (data) => {
+        broadcastToUser(tiktokUsername, {
             type: 'like',
             user: data.user.uniqueId,
             likeCount: data.likeCount,
-            timestamp: new Date().toLocaleTimeString()
+            timestamp: new Date().toLocaleTimeString(),
         });
     });
 
-    tiktokConnection.on(WebcastEvent.FOLLOW, data => {
+    tiktokConnection.on(WebcastEvent.FOLLOW, (data) => {
         const follow = {
             type: 'follow',
             user: data.user.uniqueId,
-            timestamp: new Date().toLocaleTimeString()
+            timestamp: new Date().toLocaleTimeString(),
         };
-        console.log(`[FOLLOW] ${data.user.uniqueId} followed`);
-        broadcast(follow);
+        console.log(
+            `[@${tiktokUsername}] [FOLLOW] ${data.user.uniqueId} followed`
+        );
+        broadcastToUser(tiktokUsername, follow);
     });
-    
+
     // Disconnection
     tiktokConnection.on(WebcastEvent.DISCONNECT, () => {
-        console.log('Disconnected from TikTok');
-        broadcast({ type: 'status', message: 'Disconnected from TikTok' });
+        console.log(`Disconnected from TikTok @${tiktokUsername}`);
+        broadcastToUser(tiktokUsername, {
+            type: 'status',
+            message: 'Disconnected from TikTok',
+        });
+        tiktokConnections.delete(tiktokUsername);
     });
 }
 
@@ -128,5 +198,4 @@ function connectToTikTok() {
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
-    connectToTikTok();
 });
