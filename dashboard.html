@@ -150,9 +150,11 @@
         const chatContainer = document.getElementById('chatContainer');
         const statusDiv = document.getElementById('status');
         
-        // Connect to WebSocket
+        // Connect to WebSocket with username from URL query parameter
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}`);
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username') || '';
+        const ws = new WebSocket(`${protocol}//${window.location.host}?username=${encodeURIComponent(username)}`);
 
         const ttsQueue = [];
         const followers = [];

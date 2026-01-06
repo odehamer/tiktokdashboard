@@ -6,30 +6,8 @@
 </head>
 <body>
     <h1>Enter tiktok username</h1>
-    <form action="/dashboard" method="post">
+    <form action="/dashboard" method="get">
         <input type="text" name="username" placeholder="Tiktok Username" required>
         <button type="submit">Go to Dashboard</button>
     </form>
-    <script>
-        var form = document.querySelector("form");
-        var usernameInput = document.querySelector("input[name='username']");
-        var button = document.querySelector("button");
-
-        form.addEventListener("submit", (e)=>{
-            e.preventDefault();
-
-            var username = usernameInput.value
-
-            fetch("/dashboard", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({username})
-            }).then(response => {
-                window.location.href = '/dashboard';
-            });
-        });
-
-    </script>
 </body>
