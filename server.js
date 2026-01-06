@@ -12,6 +12,7 @@ const wss = new WebSocketServer({ server: httpServer });
 const tiktokConnections = new Map();
 
 app.use(express.json());
+app.use(express.static('.'));
 
 app.get('/', async (req, res) => {
     res.send(await readFile('./index.html', 'utf8'));

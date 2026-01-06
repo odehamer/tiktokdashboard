@@ -4,138 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TikTok Live Chat</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            height: 80vh;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px 12px 0 0;
-            text-align: center;
-        }
-        
-        .status {
-            font-size: 14px;
-            opacity: 0.9;
-            margin-top: 8px;
-        }
-        
-        .chat-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .message {
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: #667eea;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .avatar img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-        
-        .message-content {
-            flex: 1;
-        }
-        
-        .username {
-            font-weight: 600;
-            color: #667eea;
-            font-size: 14px;
-        }
-        
-        .text {
-            color: #333;
-            font-size: 14px;
-            margin-top: 4px;
-            word-wrap: break-word;
-        }
-        
-        .timestamp {
-            font-size: 12px;
-            color: #999;
-            margin-top: 2px;
-        }
-        
-        .gift {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-        }
-        
-        .like {
-            background: #f8d7da;
-            border-left: 4px solid #dc3545;
-        }
-        
-        .status-message {
-            background: #d1ecf1;
-            border-left: 4px solid #17a2b8;
-            margin: 10px 0;
-        }
-        
-        .error {
-            background: #f8d7da;
-            border-left: 4px solid #dc3545;
-            margin: 10px 0;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
@@ -145,9 +14,40 @@
             <div class="viewers" id="viewers"></div>
         </div>
         <div class="chat-container" id="chatContainer"></div>
+        <div class="button-section">
+            <div class="button-group">
+                <input type="checkbox" id="toggleTts" checked/>
+                <label for="toggleTts">Toggle TTS</label>
+            </div>
+            
+            <div class="button-group">
+                <input type="checkbox" id="ttsToggleFollow"/>
+                <label for="ttsToggleFollow">TTS after follow</label>
+            </div>
+            
+            <div class="button-group">
+                <input type="checkbox" id="ttsForEveryone"/>
+                <label for="ttsForEveryone">TTS for everyone</label>
+            </div>
+
+            <div class="button-group">
+                <input type="checkbox" id="showLikes" checked/>
+                <label for="showLikes">Show Likes</label>
+            </div>
+
+            <div class="voice-select-group">
+                <label for="voices">Select a Voice:</label>
+                <select id="voices">
+                    <option value="">Default</option>
+                </select>
+            </div>
+            
+            <button id="cancelTtsButton" class="action-button">Stop Messages</button>
+        </div>
     </div>
     
     <script>
+
         const chatContainer = document.getElementById('chatContainer');
         const statusDiv = document.getElementById('status')
         const viewersDiv = document.getElementById('viewers');
@@ -162,9 +62,12 @@
         const followers = [];
 
         
-        let ttsOn = false;
+        let ttsOn = true;
         let ttsAfterFollow = false;
         let everyoneHasTts = false;
+        let toggleLikes = true;
+
+        let selectedVoice = 'Samantha';
         
         ws.onopen = () => {
             console.log('Connected to server');
@@ -253,11 +156,14 @@
                 if (everyoneHasTts) {
                     messageDiv.style.backgroundColor = '#fff0f6';
                     const msg = new SpeechSynthesisUtterance(data.comment);
+                    msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
+                    console.log('Using voice:', msg.voice);
                     speechSynthesis.speak(msg);
                 } else if (ttsQueue.includes(data.user)) {
                     messageDiv.style.backgroundColor = '#fff0f6';
                     ttsQueue.splice(ttsQueue.indexOf(data.user), 1);
                     const msg = new SpeechSynthesisUtterance(data.comment);
+                    msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
                     speechSynthesis.speak(msg);
                 }
             }
@@ -266,21 +172,22 @@
         
         function displayGiftMessage(data) {
             const messageDiv = createMessageElement('message gift');
-            messageDiv.innerHTML = `<strong>${data.name}</strong>sent ${data.count}x ${data.giftName} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            messageDiv.innerHTML = `<strong>${data.name}</strong> sent ${data.count}x ${data.giftName} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         
         function displayLikeMessage(data) {
+            if (!toggleLikes) return;
             const messageDiv = createMessageElement('message like');
-            messageDiv.innerHTML = `<strong>${data.name}</strong>liked! ❤️<span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            messageDiv.innerHTML = `<strong>${data.name}</strong> liked! ❤️ <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
         function displayFollowMessage(data) {
             const messageDiv = createMessageElement('message status-message');
-            messageDiv.innerHTML = `🎉 <strong>${data.name}</strong>just followed! <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            messageDiv.innerHTML = `🎉 <strong>${data.name}</strong> just followed! <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             if (ttsAfterFollow && !followers.includes(data.user)) {
@@ -304,36 +211,57 @@
             div.className = className;
             return div;
         }
+
+        // Event Listeners
+        const toggleTts = document.getElementById('toggleTts');
+        toggleTts.addEventListener('change', (e) => {
+            ttsOn = e.target.checked;
+        });
+
+        const ttsToggleFollow = document.getElementById('ttsToggleFollow');
+        ttsToggleFollow.addEventListener('change', (e) => {
+            ttsAfterFollow = e.target.checked;
+        });
+
+        const ttsForEveryone = document.getElementById('ttsForEveryone');
+        ttsForEveryone.addEventListener('change', (e) => {
+            everyoneHasTts = e.target.checked;
+        });
+
+        const showLikes = document.getElementById('showLikes');
+        showLikes.addEventListener('change', (e) => {
+            toggleLikes = e.target.checked;
+        });
+
+        const voicesSelect = document.getElementById('voices');
+        function populateVoiceList() {
+            console.log('Populating voice list');
+            const voices = speechSynthesis.getVoices().filter(voice => voice.lang.slice(0,2) === 'en');
+            console.log('Available voices:', voices);
+            voices.forEach((voice) => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                voicesSelect.appendChild(option);
+            });
+        }
+
+        // Populate voices when they load
+        speechSynthesis.onvoiceschanged = () => {
+            populateVoiceList();
+        };
+
+        voices.addEventListener('change', () => {
+            selectedVoice = voicesSelect.value;
+            const msg = new SpeechSynthesisUtterance("Hi, I am your selected voice!");
+            msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
+            speechSynthesis.speak(msg);
+        });
+
+        const cancelTtsButton = document.getElementById('cancelTtsButton');
+        cancelTtsButton.addEventListener('click', () => {
+            speechSynthesis.cancel();
+        });
     </script>
-    <div>
-        <input type="checkbox" id="toggleTts"/>
-        <label for="toggleTts">Turn TTS On</label>
-        <script>
-            const toggleTts = document.getElementById('toggleTts');
-            toggleTts.addEventListener('change', (e) => {
-                ttsOn = e.target.checked;
-            });
-        </script>
-    </div>
-    <div>
-        <input type="checkbox" id="ttsToggleFollow"/>
-        <label for="ttsToggleFollow">Give TTS after follow</label>
-        <script>
-            const ttsToggleFollow = document.getElementById('ttsToggleFollow');
-            ttsToggleFollow.addEventListener('change', (e) => {
-                ttsAfterFollow = e.target.checked;
-            });
-        </script>
-    </div>
-    <div>
-        <input type="checkbox" id="ttsForEveryone"/>
-        <label for="ttsForEveryone">Give TTS to everyone</label>
-        <script>
-            const ttsForEveryone = document.getElementById('ttsForEveryone');
-            ttsForEveryone.addEventListener('change', (e) => {
-                everyoneHasTts = e.target.checked;
-            });
-        </script>
-    </div>
 </body>
 </html>

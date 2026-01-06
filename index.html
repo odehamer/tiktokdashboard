@@ -1,13 +1,27 @@
 <!DOCTYPE html>
-<html lang="en"></html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tiktok Live Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Live Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Enter tiktok username</h1>
-    <form action="/dashboard" method="get">
-        <input type="text" name="username" placeholder="Tiktok Username" required>
-        <button type="submit">Go to Dashboard</button>
-    </form>
+    <div class="index-container">
+        <div class="index-card">
+            <h1>TikTok Live Dashboard</h1>
+            <p>Watch live chats, gifts, and interactions in real-time</p>
+            <form class="index-form" action="/dashboard" method="get">
+                <input 
+                    type="text" 
+                    name="username" 
+                    placeholder="Enter TikTok Username" 
+                    required
+                    autocomplete="off"
+                >
+                <button type="submit">Go to Dashboard</button>
+            </form>
+        </div>
+    </div>
 </body>
+</html>
