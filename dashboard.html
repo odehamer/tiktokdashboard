@@ -142,13 +142,15 @@
         <div class="header">
             <h1>TikTok Live Chat</h1>
             <div class="status" id="status">Connecting...</div>
+            <div class="viewers" id="viewers"></div>
         </div>
         <div class="chat-container" id="chatContainer"></div>
     </div>
     
     <script>
         const chatContainer = document.getElementById('chatContainer');
-        const statusDiv = document.getElementById('status');
+        const statusDiv = document.getElementById('status')
+        const viewersDiv = document.getElementById('viewers');
         
         // Connect to WebSocket with username from URL query parameter
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -158,7 +160,11 @@
 
         const ttsQueue = [];
         const followers = [];
+
+        
+        let ttsOn = false;
         let ttsAfterFollow = false;
+        let everyoneHasTts = false;
         
         ws.onopen = () => {
             console.log('Connected to server');
@@ -181,6 +187,9 @@
                 case 'follow':
                     displayFollowMessage(data);
                     break;
+                case 'viewerCount':
+                    displayViewerCount(data.viewerCount);
+                    break;
                 case 'status':
                     updateStatus(data.message);
                     break;
@@ -198,6 +207,10 @@
         ws.onclose = () => {
             displayError('Disconnected from server');
         };
+
+        function displayViewerCount(count) {
+            viewersDiv.textContent = `Viewers: ${count}`;
+        }
         
         function displayChatMessage(data) {
             const messageDiv = createMessageElement('message');
@@ -217,7 +230,7 @@
             
             const usernameSpan = document.createElement('div');
             usernameSpan.className = 'username';
-            usernameSpan.textContent = data.user;
+            usernameSpan.textContent = data.name;
             
             const textSpan = document.createElement('div');
             textSpan.className = 'text';
@@ -236,32 +249,38 @@
             
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            if (ttsQueue.includes(data.user)) {
-                messageDiv.style.backgroundColor = '#fff0f6';
-                const msg = new SpeechSynthesisUtterance(data.comment);
-                speechSynthesis.speak(msg);
+            if (ttsOn) {
+                if (everyoneHasTts) {
+                    messageDiv.style.backgroundColor = '#fff0f6';
+                    const msg = new SpeechSynthesisUtterance(data.comment);
+                    speechSynthesis.speak(msg);
+                } else if (ttsQueue.includes(data.user)) {
+                    messageDiv.style.backgroundColor = '#fff0f6';
+                    ttsQueue.splice(ttsQueue.indexOf(data.user), 1);
+                    const msg = new SpeechSynthesisUtterance(data.comment);
+                    speechSynthesis.speak(msg);
+                }
             }
             
         }
         
         function displayGiftMessage(data) {
             const messageDiv = createMessageElement('message gift');
-            messageDiv.innerHTML = `<strong>${data.user}</strong> sent ${data.count}x ${data.gift} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            messageDiv.innerHTML = `<strong>${data.name}</strong>sent ${data.count}x ${data.giftName} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
         
         function displayLikeMessage(data) {
             const messageDiv = createMessageElement('message like');
-            messageDiv.innerHTML = `<strong>${data.user}</strong> liked! ❤️ (${data.likeCount}) <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            messageDiv.innerHTML = `<strong>${data.name}</strong>liked! ❤️<span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            ttsQueue.push(data.user);
         }
 
         function displayFollowMessage(data) {
             const messageDiv = createMessageElement('message status-message');
-            messageDiv.innerHTML = `🎉 <strong>${data.user}</strong> just followed! <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            messageDiv.innerHTML = `🎉 <strong>${data.name}</strong>just followed! <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             if (ttsAfterFollow && !followers.includes(data.user)) {
@@ -286,7 +305,16 @@
             return div;
         }
     </script>
-
+    <div>
+        <input type="checkbox" id="toggleTts"/>
+        <label for="toggleTts">Turn TTS On</label>
+        <script>
+            const toggleTts = document.getElementById('toggleTts');
+            toggleTts.addEventListener('change', (e) => {
+                ttsOn = e.target.checked;
+            });
+        </script>
+    </div>
     <div>
         <input type="checkbox" id="ttsToggleFollow"/>
         <label for="ttsToggleFollow">Give TTS after follow</label>
@@ -294,6 +322,16 @@
             const ttsToggleFollow = document.getElementById('ttsToggleFollow');
             ttsToggleFollow.addEventListener('change', (e) => {
                 ttsAfterFollow = e.target.checked;
+            });
+        </script>
+    </div>
+    <div>
+        <input type="checkbox" id="ttsForEveryone"/>
+        <label for="ttsForEveryone">Give TTS to everyone</label>
+        <script>
+            const ttsForEveryone = document.getElementById('ttsForEveryone');
+            ttsForEveryone.addEventListener('change', (e) => {
+                everyoneHasTts = e.target.checked;
             });
         </script>
     </div>

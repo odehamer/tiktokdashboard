@@ -136,6 +136,7 @@ function connectToTikTok(tiktokUsername, initialClient) {
         const message = {
             type: 'chat',
             user: data.user.uniqueId,
+            name: data.user.nickname,
             avatar: data.user.profilePictureUrl,
             comment: data.comment,
             timestamp: new Date().toLocaleTimeString(),
@@ -147,11 +148,16 @@ function connectToTikTok(tiktokUsername, initialClient) {
     });
 
     // Gifts
-    tiktokConnection.on(WebcastEvent.GIFT, (data) => {
+    tiktokConnection.on(WebcastEvent.GIFT, data => {
+
+        // Only process when the gift combo/repeat has ended
+        if (data.repeatEnd === 0) return;
+        
         const gift = {
             type: 'gift',
             user: data.user.uniqueId,
-            gift: data.giftName,
+            name: data.user.nickname,
+            giftName: data.giftDetails.giftName,
             count: data.repeatCount,
             timestamp: new Date().toLocaleTimeString(),
         };
@@ -166,16 +172,19 @@ function connectToTikTok(tiktokUsername, initialClient) {
         broadcastToUser(tiktokUsername, {
             type: 'like',
             user: data.user.uniqueId,
+            name: data.user.nickname,
             likeCount: data.likeCount,
             timestamp: new Date().toLocaleTimeString(),
         });
     });
 
-    tiktokConnection.on(WebcastEvent.FOLLOW, (data) => {
+    // Follows
+    tiktokConnection.on(WebcastEvent.FOLLOW, data => {
         const follow = {
             type: 'follow',
             user: data.user.uniqueId,
-            timestamp: new Date().toLocaleTimeString(),
+            name: data.user.nickname,
+            timestamp: new Date().toLocaleTimeString()
         };
         console.log(
             `[@${tiktokUsername}] [FOLLOW] ${data.user.uniqueId} followed`
@@ -183,6 +192,14 @@ function connectToTikTok(tiktokUsername, initialClient) {
         broadcastToUser(tiktokUsername, follow);
     });
 
+    // Viewer Count Updates
+    tiktokConnection.on(WebcastEvent.ROOM_USER, data => {
+        broadcastToUser(tiktokUsername, {
+            type: 'viewerCount',
+            viewerCount: data.viewerCount
+        });
+    });
+    
     // Disconnection
     tiktokConnection.on(WebcastEvent.DISCONNECT, () => {
         console.log(`Disconnected from TikTok @${tiktokUsername}`);
