@@ -134,12 +134,14 @@ function connectToTikTok(tiktokUsername, initialClient) {
 
     // Chat messages
     tiktokConnection.on(WebcastEvent.CHAT, (data) => {
+        console.log(data);
         const message = {
             type: 'chat',
             user: data.user.uniqueId,
             name: data.user.nickname,
             avatar: data.user.profilePictureUrl,
             comment: data.comment,
+            isFollower: data.userIdentity.isFollowerOfAnchor,
             timestamp: new Date().toLocaleTimeString(),
         };
         console.log(

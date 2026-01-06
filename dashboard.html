@@ -13,36 +13,72 @@
             <div class="status" id="status">Connecting...</div>
             <div class="viewers" id="viewers"></div>
         </div>
-        <div class="chat-container" id="chatContainer"></div>
-        <div class="button-section">
-            <div class="button-group">
-                <input type="checkbox" id="toggleTts" checked/>
-                <label for="toggleTts">Toggle TTS</label>
+        
+        <div class="main-content">
+            <div class="chat-section">
+                <div class="chat-container" id="chatContainer"></div>
             </div>
             
-            <div class="button-group">
-                <input type="checkbox" id="ttsToggleFollow"/>
-                <label for="ttsToggleFollow">TTS after follow</label>
-            </div>
-            
-            <div class="button-group">
-                <input type="checkbox" id="ttsForEveryone"/>
-                <label for="ttsForEveryone">TTS for everyone</label>
-            </div>
+            <div class="controls-section">
+                <div class="controls-container">
+                    <h3>TTS Controls</h3>
+                    <div class="button-group">
+                        <input type="checkbox" id="toggleTts" checked/>
+                        <label for="toggleTts">Toggle TTS</label>
+                    </div>
+                    
+                    <div class="button-group">
+                        <input type="checkbox" id="ttsToggleFollow" title="New Follower's next message will be read aloud"/>
+                        <label for="ttsToggleFollow" title="New Follower's next message will be read aloud">TTS after follow</label>
+                    </div>
 
-            <div class="button-group">
-                <input type="checkbox" id="showLikes" checked/>
-                <label for="showLikes">Show Likes</label>
-            </div>
+                    <div class="button-group">
+                        <input type="checkbox" id="ttsForFollowers"/>
+                        <label for="ttsForFollowers">TTS for followers</label>
+                    </div>
+                    
+                    <div class="button-group">
+                        <input type="checkbox" id="ttsForEveryone"/>
+                        <label for="ttsForEveryone">TTS for everyone</label>
+                    </div>
 
-            <div class="voice-select-group">
-                <label for="voices">Select a Voice:</label>
-                <select id="voices">
-                    <option value="">Default</option>
-                </select>
+                    <div class="button-group">
+                        <input type="checkbox" id="showLikes" checked/>
+                        <label for="showLikes">Show Likes</label>
+                    </div>
+                    
+                    <button id="cancelTtsButton" class="action-button">Stop Messages</button>
+                </div>
+                
+                <div class="controls-container">
+                    <h3>Voice Settings</h3>
+                    <div class="voice-select-group">
+                        <label for="voices">Select a Voice:</label>
+                        <select id="voices">
+                            <option value="">Default</option>
+                        </select>
+                    </div>
+
+                    <div class="voice-select-group">
+                        <label for="ttsVolume">Volume</label>
+                        <input type="range" id="ttsVolume" min="0" max="1" value="1" step="0.1">
+                    </div>
+
+                    <div class="voice-select-group">
+                        <label for="ttsPitch">Pitch</label>
+                        <input type="range" id="ttsPitch" min="0.1" max="2" value="1" step="0.1">
+                    </div>
+
+                    <div class="voice-select-group">
+                        <label for="ttsRate">Speed</label>
+                        <input type="range" id="ttsRate" min="0.1" max="2" value="1" step="0.1">
+                    </div>
+
+                    <button id="previewVoiceButton" class="action-button" onclick="speak('Hi, I am your selected voice.')">Preview Voice</button>
+
+                </div>
             </div>
-            
-            <button id="cancelTtsButton" class="action-button">Stop Messages</button>
+        </div>
         </div>
     </div>
     
@@ -64,9 +100,13 @@
         
         let ttsOn = true;
         let ttsAfterFollow = false;
+        let followersHaveTts = false;
         let everyoneHasTts = false;
         let toggleLikes = true;
 
+        let volume = 1;
+        let rate = 1.0;
+        let pitch = 1.0;
         let selectedVoice = 'Samantha';
         
         ws.onopen = () => {
@@ -155,16 +195,14 @@
             if (ttsOn) {
                 if (everyoneHasTts) {
                     messageDiv.style.backgroundColor = '#fff0f6';
-                    const msg = new SpeechSynthesisUtterance(data.comment);
-                    msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
-                    console.log('Using voice:', msg.voice);
-                    speechSynthesis.speak(msg);
+                    speak(data.comment);
+                } else if (followersHaveTts && data.isFollower) {
+                    messageDiv.style.backgroundColor = '#fff0f6';
+                    speak(data.comment);
                 } else if (ttsQueue.includes(data.user)) {
                     messageDiv.style.backgroundColor = '#fff0f6';
                     ttsQueue.splice(ttsQueue.indexOf(data.user), 1);
-                    const msg = new SpeechSynthesisUtterance(data.comment);
-                    msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
-                    speechSynthesis.speak(msg);
+                    speak(data.comment);
                 }
             }
             
@@ -218,21 +256,31 @@
             ttsOn = e.target.checked;
         });
 
+        // tts after follow toggle
         const ttsToggleFollow = document.getElementById('ttsToggleFollow');
         ttsToggleFollow.addEventListener('change', (e) => {
             ttsAfterFollow = e.target.checked;
         });
 
+        // tts for followers toggle
+        const ttsForFollowers = document.getElementById('ttsForFollowers');
+        ttsForFollowers.addEventListener('change', (e) => {
+            followersHaveTts = e.target.checked;
+        });
+
+        // tts for everyone toggle
         const ttsForEveryone = document.getElementById('ttsForEveryone');
         ttsForEveryone.addEventListener('change', (e) => {
             everyoneHasTts = e.target.checked;
         });
 
+        // show likes toggle
         const showLikes = document.getElementById('showLikes');
         showLikes.addEventListener('change', (e) => {
             toggleLikes = e.target.checked;
         });
 
+        // populate voice list with english voices
         const voicesSelect = document.getElementById('voices');
         function populateVoiceList() {
             console.log('Populating voice list');
@@ -251,17 +299,45 @@
             populateVoiceList();
         };
 
+        // Voice selection change
         voices.addEventListener('change', () => {
             selectedVoice = voicesSelect.value;
-            const msg = new SpeechSynthesisUtterance("Hi, I am your selected voice!");
-            msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
-            speechSynthesis.speak(msg);
         });
 
+        // TTS volume control
+        const ttsVolume = document.getElementById('ttsVolume');
+        ttsVolume.addEventListener('input', () => {
+            volume = parseFloat(ttsVolume.value);
+        });
+
+        // TTS rate control
+        const ttsRate = document.getElementById('ttsRate');
+        ttsRate.addEventListener('input', () => {
+            rate = parseFloat(ttsRate.value);
+        });
+
+        // TTS pitch control
+        const ttsPitch = document.getElementById('ttsPitch');
+        ttsPitch.addEventListener('input', () => {
+            pitch = parseFloat(ttsPitch.value);
+        });
+
+        // stop messages button
         const cancelTtsButton = document.getElementById('cancelTtsButton');
         cancelTtsButton.addEventListener('click', () => {
             speechSynthesis.cancel();
         });
+
+        // speak message function
+        function speak(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
+            msg.rate = rate;
+            msg.pitch = pitch;
+            msg.volume = volume;
+            speechSynthesis.speak(msg);
+        }
+
     </script>
 </body>
 </html>
