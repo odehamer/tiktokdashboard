@@ -9,9 +9,11 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>TikTok Live Chat</h1>
-            <div class="status" id="status">Connecting...</div>
-            <div class="viewers" id="viewers"></div>
+            <h1 id="pageTitle">Connecting...</h1>
+            <div class="stats-container">
+                <div id="viewers">👥 0</div>
+                <div id="totalLikes">❤️ 0</div>
+            </div>
         </div>
         
         <div class="main-content">
@@ -30,6 +32,18 @@
                     <div class="button-group">
                         <input type="checkbox" id="ttsToggleFollow" title="New Follower's next message will be read aloud"/>
                         <label for="ttsToggleFollow" title="New Follower's next message will be read aloud">TTS after follow</label>
+                        
+                    </div>
+
+                    <div class="button-group" style="flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                            <input type="checkbox" id="ttsToggleForLikes" title="Chatters will receive tts for each like"/>
+                            <label for="ttsToggleForLikes" title="Chatters will receive tts for each like">TTS for likes</label>
+                        </div>
+                        <div id="likesSliderContainer" style="width: 100%; margin-top: 2px; display: none;">
+                            <label for="likesForTts" id="likesValueDisplay">1 like needed for TTS</label>
+                            <input type="range" id="likesForTts" min="1" max="15" value="1" step="1" style="width: 100%; margin-top: 6px;"/>
+                        </div>
                     </div>
 
                     <div class="button-group">
@@ -77,6 +91,26 @@
                     <button id="previewVoiceButton" class="action-button" onclick="speak('Hi, I am your selected voice.')">Preview Voice</button>
 
                 </div>
+                
+                <div class="controls-container">
+                    <h3>Statistics</h3>
+                    <div class="stat-item">
+                        <label>Peak Viewers</label>
+                        <div class="stat-value" id="peakViewers">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <label>New Followers</label>
+                        <div class="stat-value" id="newFollowers">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <label>💎 Diamonds</label>
+                        <div class="stat-value" id="diamondCount">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <label>💲 Estimated Earnings</label>
+                        <div class="stat-value" id="estimatedEarnings">$0.00</div>
+                    </div>
+                </div>
             </div>
         </div>
         </div>
@@ -85,8 +119,13 @@
     <script>
 
         const chatContainer = document.getElementById('chatContainer');
-        const statusDiv = document.getElementById('status')
         const viewersDiv = document.getElementById('viewers');
+        const totalLikesDiv = document.getElementById('totalLikes');
+        const pageTitle = document.getElementById('pageTitle');
+        const peakViewersDiv = document.getElementById('peakViewers');
+        const diamondCountDiv = document.getElementById('diamondCount');
+        const estimatedEarningsDiv = document.getElementById('estimatedEarnings');
+        const newFollowersDiv = document.getElementById('newFollowers');
         
         // Connect to WebSocket with username from URL query parameter
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -97,11 +136,13 @@
         const ttsQueue = [];
         const followers = [];
 
-        
         let ttsOn = true;
         let ttsAfterFollow = false;
         let followersHaveTts = false;
+        let ttsForLikes = false;
         let everyoneHasTts = false;
+        let likesNeededForTts = 1;
+
         let toggleLikes = true;
 
         let volume = 1;
@@ -109,6 +150,10 @@
         let pitch = 1.0;
         let selectedVoice = 'Samantha';
         
+        let viewerPeak = 0;
+        let diamondCount = 0;
+        let newFollowers = 0;
+
         ws.onopen = () => {
             console.log('Connected to server');
         };
@@ -152,7 +197,15 @@
         };
 
         function displayViewerCount(count) {
-            viewersDiv.textContent = `Viewers: ${count}`;
+            viewersDiv.textContent = `👥 ${count}`;
+            if (count > viewerPeak) {
+                viewerPeak = count;
+                peakViewersDiv.textContent = viewerPeak;
+            }
+        }
+
+        function displayTotalLikes(count) {
+            totalLikesDiv.textContent = `❤️ ${count}`;
         }
         
         function displayChatMessage(data) {
@@ -205,7 +258,6 @@
                     speak(data.comment);
                 }
             }
-            
         }
         
         function displayGiftMessage(data) {
@@ -213,10 +265,19 @@
             messageDiv.innerHTML = `<strong>${data.name}</strong> sent ${data.count}x ${data.giftName} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+            diamondCount += data.diamondCount * data.count;
+            diamondCountDiv.textContent = diamondCount;
+            estimatedEarningsDiv.textContent = `$${(diamondCount * 0.005).toFixed(2)}`;
         }
         
         function displayLikeMessage(data) {
+            displayTotalLikes(data.totalLikeCount);
+            if (ttsForLikes && data.likeCount >= likesNeededForTts) {
+                const likes = new Array(Math.floor(data.likeCount / likesNeededForTts)).fill(data.user);
+                ttsQueue.push(...likes);
+            }       
             if (!toggleLikes) return;
+            console.log(data.type)
             const messageDiv = createMessageElement('message like');
             messageDiv.innerHTML = `<strong>${data.name}</strong> liked! ❤️ <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
@@ -228,14 +289,20 @@
             messageDiv.innerHTML = `🎉 <strong>${data.name}</strong> just followed! <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
-            if (ttsAfterFollow && !followers.includes(data.user)) {
-                followers.push(data.user);
-                ttsQueue.push(data.user)
+            if (!followers.includes(data.user)) {
+                newFollowers += 1;
+                newFollowersDiv.textContent = newFollowers;
+                if (ttsAfterFollow) {
+                    followers.push(data.user);
+                    ttsQueue.push(data.user);
+                }
             }
         }
         
         function updateStatus(message) {
-            statusDiv.textContent = message;
+            if (message.includes('Connected')) {
+                pageTitle.textContent = `@${username}'s live chat`;
+            }
         }
         
         function displayError(message) {
@@ -260,6 +327,25 @@
         const ttsToggleFollow = document.getElementById('ttsToggleFollow');
         ttsToggleFollow.addEventListener('change', (e) => {
             ttsAfterFollow = e.target.checked;
+        });
+
+        // tts for likes toggle
+        const ttsToggleForLikes = document.getElementById('ttsToggleForLikes');
+        const likesSliderContainer = document.getElementById('likesSliderContainer');
+        ttsToggleForLikes.addEventListener('change', (e) => {
+            ttsForLikes = e.target.checked;
+            likesSliderContainer.style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        const likesForTts = document.getElementById('likesForTts');
+        const likesValueDisplay = document.getElementById('likesValueDisplay');
+        likesForTts.addEventListener('input', (e) => {
+            likesNeededForTts = parseInt(e.target.value, 10);
+            if (likesForTts.value === '1') {
+                likesValueDisplay.textContent = `${likesNeededForTts} like needed for TTS`;
+            } else {
+                likesValueDisplay.textContent = `${likesNeededForTts} likes needed for TTS`;
+            }
         });
 
         // tts for followers toggle

@@ -99,15 +99,15 @@ function broadcastToUser(tiktokUsername, data) {
 // TikTok Live Connection
 
 function connectToTikTok(tiktokUsername, initialClient) {
-    const tiktokConnection = new TikTokLiveConnection(tiktokUsername);
+    const tiktokConnection = new TikTokLiveConnection(tiktokUsername, {
+        enableExtendedGiftInfo: true,
+    });
 
-    // Store connection info with initial client
     const connectionInfo = {
         connection: tiktokConnection,
         clients: new Set([initialClient]),
     };
     tiktokConnections.set(tiktokUsername, connectionInfo);
-
     tiktokConnection
         .connect()
         .then((state) => {
@@ -134,7 +134,6 @@ function connectToTikTok(tiktokUsername, initialClient) {
 
     // Chat messages
     tiktokConnection.on(WebcastEvent.CHAT, (data) => {
-        console.log(data);
         const message = {
             type: 'chat',
             user: data.user.uniqueId,
@@ -155,13 +154,14 @@ function connectToTikTok(tiktokUsername, initialClient) {
 
         // Only process when the gift combo/repeat has ended
         if (data.repeatEnd === 0) return;
-        
+        console.log(data);
         const gift = {
             type: 'gift',
             user: data.user.uniqueId,
             name: data.user.nickname,
             giftName: data.giftDetails.giftName,
             count: data.repeatCount,
+            diamondCount: data.giftDetails.diamondCount,
             timestamp: new Date().toLocaleTimeString(),
         };
         console.log(
@@ -177,6 +177,7 @@ function connectToTikTok(tiktokUsername, initialClient) {
             user: data.user.uniqueId,
             name: data.user.nickname,
             likeCount: data.likeCount,
+            totalLikeCount: data.totalLikeCount,
             timestamp: new Date().toLocaleTimeString(),
         });
     });
