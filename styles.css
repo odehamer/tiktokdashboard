@@ -292,6 +292,18 @@ body {
     border-left: 4px solid #ffc107;
 }
 
+/* Gift Icon Styles */
+.gift-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.gift-icon img {
+    object-fit: contain;
+}
+
 .like {
     background: #f8d7da;
     border-left: 4px solid #dc3545;

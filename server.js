@@ -138,36 +138,31 @@ function connectToTikTok(tiktokUsername, initialClient) {
             type: 'chat',
             user: data.user.uniqueId,
             name: data.user.nickname,
-            avatar: data.user.profilePictureUrl,
+            avatar: data.user.profilePicture.url[0],
             comment: data.comment,
             isFollower: data.userIdentity.isFollowerOfAnchor,
             timestamp: new Date().toLocaleTimeString(),
         };
-        console.log(
-            `[@${tiktokUsername}] [CHAT] ${data.user.uniqueId}: ${data.comment}`
-        );
         broadcastToUser(tiktokUsername, message);
     });
 
     // Gifts
     tiktokConnection.on(WebcastEvent.GIFT, data => {
+        // Skip streakable gifts that haven't finished repeating
+        if (data.giftDetails.giftType === 1 && !data.repeatEnd) {
+            return;
+        }
 
-        // Only process when the gift combo/repeat has ended
-        if (data.repeatEnd === 0) return;
-        console.log(data);
-        const gift = {
+        broadcastToUser(tiktokUsername, {
             type: 'gift',
             user: data.user.uniqueId,
             name: data.user.nickname,
             giftName: data.giftDetails.giftName,
-            count: data.repeatCount,
+            count: data.repeatCount || 1,
             diamondCount: data.giftDetails.diamondCount,
+            icon: data.giftDetails.icon.url[0],
             timestamp: new Date().toLocaleTimeString(),
-        };
-        console.log(
-            `[@${tiktokUsername}] [GIFT] ${data.user.uniqueId} sent ${data.giftName}`
-        );
-        broadcastToUser(tiktokUsername, gift);
+        });
     });
 
     // Likes
@@ -190,9 +185,6 @@ function connectToTikTok(tiktokUsername, initialClient) {
             name: data.user.nickname,
             timestamp: new Date().toLocaleTimeString()
         };
-        console.log(
-            `[@${tiktokUsername}] [FOLLOW] ${data.user.uniqueId} followed`
-        );
         broadcastToUser(tiktokUsername, follow);
     });
 

@@ -13,6 +13,7 @@
             <div class="stats-container">
                 <div id="viewers">👥 0</div>
                 <div id="totalLikes">❤️ 0</div>
+                <div id="liveTime">⏱️ 00:00:00</div>
             </div>
         </div>
         
@@ -57,8 +58,8 @@
                     </div>
 
                     <div class="button-group">
-                        <input type="checkbox" id="showLikes" checked/>
-                        <label for="showLikes">Show Likes</label>
+                        <input type="checkbox" id="readEmojis" checked/>
+                        <label for="readEmojis">Read Emojis</label>
                     </div>
                     
                     <button id="cancelTtsButton" class="action-button">Stop Messages</button>
@@ -91,6 +92,19 @@
                     <button id="previewVoiceButton" class="action-button" onclick="speak('Hi, I am your selected voice.')">Preview Voice</button>
 
                 </div>
+
+                <div class="controls-container">
+                    <h3>Chat Settings</h3>
+                        <div class="button-group">
+                            <input type="checkbox" id="showLikes" checked/>
+                            <label for="showLikes">Show Likes</label>
+                        </div>
+
+                        <div class="voice-select-group">
+                            <label for="giftIconSize">Gift Icon Size</label>
+                            <input type="range" id="giftIconSize" min="20" max="100" value="40" step="5">
+                        </div>
+                </div>
                 
                 <div class="controls-container">
                     <h3>Statistics</h3>
@@ -110,6 +124,10 @@
                         <label>💲 Estimated Earnings</label>
                         <div class="stat-value" id="estimatedEarnings">$0.00</div>
                     </div>
+                    <div class="stat-item">
+                        <label>💲 Estimated Earnings per Hour</label>
+                        <div class="stat-value" id="estimatedEarningsPerHour">$0.00</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,13 +137,16 @@
     <script>
 
         const chatContainer = document.getElementById('chatContainer');
+
         const viewersDiv = document.getElementById('viewers');
         const totalLikesDiv = document.getElementById('totalLikes');
         const pageTitle = document.getElementById('pageTitle');
+
         const peakViewersDiv = document.getElementById('peakViewers');
         const diamondCountDiv = document.getElementById('diamondCount');
         const estimatedEarningsDiv = document.getElementById('estimatedEarnings');
         const newFollowersDiv = document.getElementById('newFollowers');
+        const estimatedEarningsPerHourDiv = document.getElementById('estimatedEarningsPerHour');        
         
         // Connect to WebSocket with username from URL query parameter
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -142,6 +163,7 @@
         let ttsForLikes = false;
         let everyoneHasTts = false;
         let likesNeededForTts = 1;
+        let readEmojis = true;
 
         let toggleLikes = true;
 
@@ -149,6 +171,8 @@
         let rate = 1.0;
         let pitch = 1.0;
         let selectedVoice = 'Samantha';
+
+        let giftIconSize = 40;
         
         let viewerPeak = 0;
         let diamondCount = 0;
@@ -207,6 +231,27 @@
         function displayTotalLikes(count) {
             totalLikesDiv.textContent = `❤️ ${count}`;
         }
+
+        // increment live time every second
+        let elapsedSeconds = 0;
+
+        function updateTime() {
+            let hours = Math.floor(elapsedSeconds / 3600);
+            let minutes = Math.floor((elapsedSeconds % 3600) / 60);
+            let seconds = elapsedSeconds % 60;
+            
+            hours = hours < 10 ? "0" + hours : hours;
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+            
+            const timeStr = `${hours}:${minutes}:${seconds}`;
+            document.getElementById("liveTime").innerText = "⏱️ " + timeStr;
+            
+            elapsedSeconds++;
+        }
+
+        // Update every 1 second
+        setInterval(updateTime, 1000);
         
         function displayChatMessage(data) {
             const messageDiv = createMessageElement('message');
@@ -245,6 +290,7 @@
             
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+            
             if (ttsOn) {
                 if (everyoneHasTts) {
                     messageDiv.style.backgroundColor = '#fff0f6';
@@ -262,7 +308,28 @@
         
         function displayGiftMessage(data) {
             const messageDiv = createMessageElement('message gift');
-            messageDiv.innerHTML = `<strong>${data.name}</strong> sent ${data.count}x ${data.giftName} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+            messageDiv.style.display = 'flex';
+            messageDiv.style.alignItems = 'center';
+            messageDiv.style.gap = '8px';
+
+            const iconDiv = document.createElement('div');
+            iconDiv.className = 'gift-icon';
+
+            if (data.icon) {
+                const img = document.createElement('img');
+                img.src = data.icon;
+                img.style.width = giftIconSize + '%';
+                img.style.height = 'auto';
+                iconDiv.appendChild(img);
+            } else {
+                iconDiv.textContent = '🎁';
+            }
+
+            const textDiv = document.createElement('div');
+            textDiv.innerHTML = `<strong>${data.name}</strong> sent ${data.count}x ${data.giftName} 🎁 <span style="font-size: 12px; color: #666;">${data.timestamp}</span>`;
+
+            messageDiv.appendChild(iconDiv);
+            messageDiv.appendChild(textDiv);
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             diamondCount += data.diamondCount * data.count;
@@ -302,6 +369,7 @@
         function updateStatus(message) {
             if (message.includes('Connected')) {
                 pageTitle.textContent = `@${username}'s live chat`;
+                updateTime();
             }
         }
         
@@ -360,6 +428,12 @@
             everyoneHasTts = e.target.checked;
         });
 
+        // read emojis toggle
+        const readEmojisCheckbox = document.getElementById('readEmojis');
+        readEmojisCheckbox.addEventListener('change', (e) => {
+            readEmojis = e.target.checked;
+        });
+
         // show likes toggle
         const showLikes = document.getElementById('showLikes');
         showLikes.addEventListener('change', (e) => {
@@ -408,6 +482,11 @@
             pitch = parseFloat(ttsPitch.value);
         });
 
+        const giftIconSizeInput = document.getElementById('giftIconSize');
+        giftIconSizeInput.addEventListener('input', () => {
+            giftIconSize = parseInt(giftIconSizeInput.value, 10);
+        });
+
         // stop messages button
         const cancelTtsButton = document.getElementById('cancelTtsButton');
         cancelTtsButton.addEventListener('click', () => {
@@ -416,13 +495,25 @@
 
         // speak message function
         function speak(text) {
-            const msg = new SpeechSynthesisUtterance(text);
+            // remove emojis function
+            const removeEmojis = (str) => str.replace(/[\p{Emoji}\p{Emoji_Modifier}\p{Emoji_Component}\p{Emoji_Modifier_Base}\p{Emoji_Presentation}]/gu, '');
+            let msg;
+            if (readEmojis) {
+                msg = new SpeechSynthesisUtterance(text);
+            } else {
+                msg = new SpeechSynthesisUtterance(removeEmojis(text));
+            }
             msg.voice = speechSynthesis.getVoices().find(voice => voice.name === selectedVoice);
             msg.rate = rate;
             msg.pitch = pitch;
             msg.volume = volume;
             speechSynthesis.speak(msg);
         }
+
+        // update estimated earnings per hour every minute
+        setInterval(() => {
+            estimatedEarningsPerHourDiv.textContent = `$${((diamondCount * 0.005) / (elapsedSeconds / 3600)).toFixed(2)}`;
+        }, 60000);
 
     </script>
 </body>
