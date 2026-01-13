@@ -70,14 +70,9 @@
                             <label for="ttsToggleDonations">TTS for gifts</label>
                         </div>
                         <div id="coinsSliderContainer" style="width: 100%; display: none;">
-                            <label for="coinsForTts" id="coinsValueDisplay">1 coin needed for TTS</label>
+                            <label for="coinsForTts" id="coinsValueDisplay">1 coin per TTS</label>
                             <input type="range" id="coinsForTts" min="0" max="100" value="0" step="5" style="width: 100%; margin-top: 8px; height: 6px; border-radius: 3px; background: #e5e7eb; outline: none; -webkit-appearance: none; appearance: none;"/>
                         </div>
-                    </div>
-                    
-                    <div class="button-group">
-                        <input type="checkbox" id="ttsToggleFollow" title="New Follower's next message will be read aloud"/>
-                        <label for="ttsToggleFollow" title="New Follower's next message will be read aloud">TTS after follow</label>
                     </div>
 
                     <div class="button-group" style="flex-direction: column; align-items: flex-start;">
@@ -86,13 +81,19 @@
                             <label for="ttsToggleForLikes" title="Chatters will receive tts for each like">TTS for likes</label>
                         </div>
                         <div id="likesSliderContainer" style="width: 100%; margin-top: 2px; display: none;">
-                            <label for="likesForTts" id="likesValueDisplay">Likes needed for TTS:</label>
+                            <label for="likesForTts" id="likesValueDisplay">Likes per TTS:</label>
                             <select id="likesForTts" style="width: 100%; margin-top: 8px; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; background-color: white; cursor: pointer; transition: all 0.2s; color: #333;">
                                 <option value="1">1 like</option>
+                                <option value="3">3 likes</option>
                                 <option value="5">5 likes</option>
                                 <option value="15">15 likes</option>
                             </select>
                         </div>
+                    </div>
+
+                    <div class="button-group">
+                        <input type="checkbox" id="ttsToggleFollow" title="New Follower's next message will be read aloud"/>
+                        <label for="ttsToggleFollow" title="New Follower's next message will be read aloud">TTS after follow</label>
                     </div>
 
                     <div class="button-group">
@@ -157,6 +158,10 @@
                 <div class="controls-container">
                     <h3>Statistics</h3>
                     <div class="stat-item">
+                        <label>Average Viewers</label>
+                        <div class="stat-value" id="averageViewers">0</div>
+                    </div>
+                    <div class="stat-item">
                         <label>Peak Viewers</label>
                         <div class="stat-value" id="peakViewers">0</div>
                     </div>
@@ -190,6 +195,7 @@
         const totalLikesDiv = document.getElementById('totalLikes');
         const pageTitle = document.getElementById('pageTitle');
 
+        const averageViewersDiv = document.getElementById('averageViewers');
         const peakViewersDiv = document.getElementById('peakViewers');
         const diamondCountDiv = document.getElementById('diamondCount');
         const estimatedEarningsDiv = document.getElementById('estimatedEarnings');
@@ -225,6 +231,8 @@
         let giftIconSize = 40;
         
         let viewerPeak = 0;
+        let averageViewers = 0;
+        let viewerIncrements = 0;
         let diamondCount = 0;
         let newFollowers = 0;
 
@@ -276,6 +284,9 @@
                 viewerPeak = count;
                 peakViewersDiv.textContent = viewerPeak;
             }
+            viewerIncrements++;
+            averageViewers = ((averageViewers * (viewerIncrements - 1)) + count) / viewerIncrements;
+            averageViewersDiv.textContent = Math.round(averageViewers);
         }
 
         function displayTotalLikes(count) {
@@ -396,10 +407,12 @@
         
         function displayLikeMessage(data) {
             displayTotalLikes(data.totalLikeCount);
+
             if (ttsForLikes && data.likeCount >= likesNeededForTts) {
                 const likes = new Array(Math.floor(data.likeCount / likesNeededForTts)).fill(data.user);
                 ttsQueue.push(...likes);
             }       
+
             if (!toggleLikes) return;
             console.log(data.type)
             const messageDiv = createMessageElement('message like');
@@ -463,9 +476,9 @@
             const sliderValue = parseInt(e.target.value, 10);
             coinsNeededForTts = sliderValue === 0 ? 1 : sliderValue;
             if (coinsNeededForTts === 1) {
-                coinsValueDisplay.textContent = `1 coin needed for TTS`;
+                coinsValueDisplay.textContent = `1 coin per TTS`;
             } else {
-                coinsValueDisplay.textContent = `${coinsNeededForTts} coins needed for TTS`;
+                coinsValueDisplay.textContent = `${coinsNeededForTts} coins per TTS`;
             }
 
             // Update slider background color to show progress
