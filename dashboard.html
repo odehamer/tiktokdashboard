@@ -5,6 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TikTok Live Chat</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Slider thumb styling */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -27,13 +61,23 @@
                     <h3>TTS Controls</h3>
                     <div class="button-group">
                         <input type="checkbox" id="toggleTts" checked/>
-                        <label for="toggleTts">Toggle TTS</label>
+                        <label for="toggleTts">TTS on</label>
+                    </div>
+
+                    <div class="button-group" style="flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                            <input type="checkbox" id="ttsToggleDonations"/>
+                            <label for="ttsToggleDonations">TTS for gifts</label>
+                        </div>
+                        <div id="coinsSliderContainer" style="width: 100%; display: none;">
+                            <label for="coinsForTts" id="coinsValueDisplay">1 coin needed for TTS</label>
+                            <input type="range" id="coinsForTts" min="0" max="100" value="0" step="5" style="width: 100%; margin-top: 8px; height: 6px; border-radius: 3px; background: #e5e7eb; outline: none; -webkit-appearance: none; appearance: none;"/>
+                        </div>
                     </div>
                     
                     <div class="button-group">
                         <input type="checkbox" id="ttsToggleFollow" title="New Follower's next message will be read aloud"/>
                         <label for="ttsToggleFollow" title="New Follower's next message will be read aloud">TTS after follow</label>
-                        
                     </div>
 
                     <div class="button-group" style="flex-direction: column; align-items: flex-start;">
@@ -42,8 +86,12 @@
                             <label for="ttsToggleForLikes" title="Chatters will receive tts for each like">TTS for likes</label>
                         </div>
                         <div id="likesSliderContainer" style="width: 100%; margin-top: 2px; display: none;">
-                            <label for="likesForTts" id="likesValueDisplay">1 like needed for TTS</label>
-                            <input type="range" id="likesForTts" min="1" max="15" value="1" step="1" style="width: 100%; margin-top: 6px;"/>
+                            <label for="likesForTts" id="likesValueDisplay">Likes needed for TTS:</label>
+                            <select id="likesForTts" style="width: 100%; margin-top: 8px; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; background-color: white; cursor: pointer; transition: all 0.2s; color: #333;">
+                                <option value="1">1 like</option>
+                                <option value="5">5 likes</option>
+                                <option value="15">15 likes</option>
+                            </select>
                         </div>
                     </div>
 
@@ -158,6 +206,8 @@
         const followers = [];
 
         let ttsOn = true;
+        let ttsForDonations = true;
+        let coinsNeededForTts = 1;
         let ttsAfterFollow = false;
         let followersHaveTts = false;
         let ttsForLikes = false;
@@ -335,6 +385,13 @@
             diamondCount += data.diamondCount * data.count;
             diamondCountDiv.textContent = diamondCount;
             estimatedEarningsDiv.textContent = `$${(diamondCount * 0.005).toFixed(2)}`;
+
+            const coinCount = (data.diamondCount === 1 ? 1 : data.diamondCount * 2) * data.count;
+
+            if (ttsForDonations && coinCount >= coinsNeededForTts) {
+                const gifts = new Array(Math.floor(coinCount / coinsNeededForTts)).fill(data.user);
+                ttsQueue.push(...gifts);
+            }
         }
         
         function displayLikeMessage(data) {
@@ -391,6 +448,40 @@
             ttsOn = e.target.checked;
         });
 
+        // tts for donations toggle
+        const ttsToggleDonations = document.getElementById('ttsToggleDonations');
+        const coinsSliderContainer = document.getElementById('coinsSliderContainer');
+        ttsToggleDonations.addEventListener('change', (e) => {
+            ttsForDonations = e.target.checked;
+            coinsSliderContainer.style.display = e.target.checked ? 'block' : 'none';
+        });
+
+        // coins for tts slider
+        const coinsForTts = document.getElementById('coinsForTts');
+        const coinsValueDisplay = document.getElementById('coinsValueDisplay');
+        coinsForTts.addEventListener('input', (e) => {
+            const sliderValue = parseInt(e.target.value, 10);
+            coinsNeededForTts = sliderValue === 0 ? 1 : sliderValue;
+            if (coinsNeededForTts === 1) {
+                coinsValueDisplay.textContent = `1 coin needed for TTS`;
+            } else {
+                coinsValueDisplay.textContent = `${coinsNeededForTts} coins needed for TTS`;
+            }
+
+            // Update slider background color to show progress
+            const percent = (coinsNeededForTts / 100) * 100;
+            e.target.style.background = `linear-gradient(to right, #6366f1 0%, #6366f1 ${percent}%, #e5e7eb ${percent}%, #e5e7eb 100%)`;
+        });
+
+        // Add thumb styling and focus effect
+        coinsForTts.addEventListener('focus', (e) => {
+            e.target.style.filter = 'drop-shadow(0 0 0 3px rgba(99, 102, 241, 0.1))';
+        });
+
+        coinsForTts.addEventListener('blur', (e) => {
+            e.target.style.filter = 'none';
+        });
+
         // tts after follow toggle
         const ttsToggleFollow = document.getElementById('ttsToggleFollow');
         ttsToggleFollow.addEventListener('change', (e) => {
@@ -405,15 +496,21 @@
             likesSliderContainer.style.display = e.target.checked ? 'block' : 'none';
         });
 
+        // likes needed for tts dropdown
         const likesForTts = document.getElementById('likesForTts');
-        const likesValueDisplay = document.getElementById('likesValueDisplay');
         likesForTts.addEventListener('input', (e) => {
             likesNeededForTts = parseInt(e.target.value, 10);
-            if (likesForTts.value === '1') {
-                likesValueDisplay.textContent = `${likesNeededForTts} like needed for TTS`;
-            } else {
-                likesValueDisplay.textContent = `${likesNeededForTts} likes needed for TTS`;
-            }
+        });
+
+        // Add focus/blur styling to dropdown
+        likesForTts.addEventListener('focus', (e) => {
+            e.target.style.borderColor = '#6366f1';
+            e.target.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
+        });
+
+        likesForTts.addEventListener('blur', (e) => {
+            e.target.style.borderColor = '#ddd';
+            e.target.style.boxShadow = 'none';
         });
 
         // tts for followers toggle
@@ -482,6 +579,7 @@
             pitch = parseFloat(ttsPitch.value);
         });
 
+        // gift icon size control
         const giftIconSizeInput = document.getElementById('giftIconSize');
         giftIconSizeInput.addEventListener('input', () => {
             giftIconSize = parseInt(giftIconSizeInput.value, 10);
@@ -495,8 +593,15 @@
 
         // speak message function
         function speak(text) {
-            // remove emojis function
-            const removeEmojis = (str) => str.replace(/[\p{Emoji}\p{Emoji_Modifier}\p{Emoji_Component}\p{Emoji_Modifier_Base}\p{Emoji_Presentation}]/gu, '');
+            // remove emojis function - more reliable emoji removal
+            const removeEmojis = (str) => {
+                return str
+                    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '') // misc symbols and pictographs
+                    .replace(/[\u{2600}-\u{27BF}]/gu, '') // dingbats
+                    .replace(/[\u{2300}-\u{23FF}]/gu, '') // miscellaneous technical
+                    .replace(/[\u{2000}-\u{206F}]/gu, '') // general punctuation
+                    .replace(/[\u{3000}-\u{303F}]/gu, ''); // CJK symbols
+            };
             let msg;
             if (readEmojis) {
                 msg = new SpeechSynthesisUtterance(text);

@@ -97,7 +97,6 @@ function broadcastToUser(tiktokUsername, data) {
 }
 
 // TikTok Live Connection
-
 function connectToTikTok(tiktokUsername, initialClient) {
     const tiktokConnection = new TikTokLiveConnection(tiktokUsername, {
         enableExtendedGiftInfo: true,
