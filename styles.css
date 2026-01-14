@@ -486,3 +486,112 @@ body {
         font-size: 24px;
     }
 }
+
+/* Slider thumb styling */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #6366f1;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #6366f1;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+/* Message buttons styling */
+.message-buttons {
+    display: flex;
+    gap: 6px;
+    margin-left: 12px;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.message-buttons-group-1 {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.message-buttons-group-2 {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.message-button {
+    padding: 6px 10px;
+    font-size: 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.read-message-button {
+    background: #4f46e5;
+    color: white;
+}
+
+.read-message-button:hover {
+    background: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+}
+
+.add-to-tts-button {
+    background: #06b6d4;
+    color: white;
+}
+
+.add-to-tts-button:hover {
+    background: #0891b2;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(6, 182, 212, 0.3);
+}
+
+.add-to-permanent-tts-button {
+    background: #8b5cf6;
+    color: white;
+}
+
+.add-to-permanent-tts-button:hover {
+    background: #7c3aed;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
+}
+
+.block-user-button {
+    background: #ef4444;
+    color: white;
+}
+
+.block-user-button:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}

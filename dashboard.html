@@ -5,40 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TikTok Live Chat</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        /* Slider thumb styling */
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #6366f1;
-            cursor: pointer;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: all 0.2s;
-        }
-
-        input[type="range"]::-webkit-slider-thumb:hover {
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
-        }
-
-        input[type="range"]::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #6366f1;
-            cursor: pointer;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: all 0.2s;
-        }
-
-        input[type="range"]::-moz-range-thumb:hover {
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
-        }
-    </style>
 </head>
 <body>
     <div class="container">
@@ -211,8 +177,11 @@
         const ttsQueue = [];
         const followers = [];
 
+        const permanentTtsUsers = new Set();
+        const blockedUsers = new Set();
+        
         let ttsOn = true;
-        let ttsForDonations = true;
+        let ttsForDonations = false;
         let coinsNeededForTts = 1;
         let ttsAfterFollow = false;
         let followersHaveTts = false;
@@ -316,6 +285,9 @@
         
         function displayChatMessage(data) {
             const messageDiv = createMessageElement('message');
+            messageDiv.style.display = 'flex';
+            messageDiv.style.justifyContent = 'space-between';
+            messageDiv.style.alignItems = 'flex-start';
             
             const avatarDiv = document.createElement('div');
             avatarDiv.className = 'avatar';
@@ -341,13 +313,72 @@
             const timestampSpan = document.createElement('div');
             timestampSpan.className = 'timestamp';
             timestampSpan.textContent = data.timestamp;
+
+            // // Create buttons container
+            // const buttonsContainer = document.createElement('div');
+            // buttonsContainer.className = 'message-buttons';
+
+            // read comment button
+            const readMessageButton = document.createElement('button');
+            readMessageButton.className = 'read-message-button message-button';
+            readMessageButton.textContent = 'Read';
+            // on click, speak the message
+            readMessageButton.onclick = () => {
+                speak(data.comment);
+                messageDiv.style.backgroundColor = '#fff0f6';
+            };
+
+            // add to tts queue button
+            const addToTtsButton = document.createElement('button');
+            addToTtsButton.className = 'add-to-tts-button message-button';
+            addToTtsButton.textContent = 'Add User to Queue';
+            // on click, add user to tts queue
+            addToTtsButton.onclick = () => {
+                ttsQueue.push(data.user);
+            };
+
+            // Group 1: Read and Add buttons in a row
+            const buttonsGroup1 = document.createElement('div');
+            buttonsGroup1.className = 'message-buttons-group-1';
+            buttonsGroup1.appendChild(readMessageButton);
+            buttonsGroup1.appendChild(addToTtsButton);
+
+            const addToPermanentTtsButton = document.createElement('button');
+            addToPermanentTtsButton.className = 'add-to-permanent-tts-button message-button';
+            addToPermanentTtsButton.textContent = 'Always TTS This User';
+            // on click, add user to permanent tts list
+            addToPermanentTtsButton.onclick = () => {
+                permanentTtsUsers.add(data.user);
+            };
+
+            // block user button
+            const blockUserButton = document.createElement('button');
+            blockUserButton.className = 'block-user-button message-button';
+            blockUserButton.textContent = 'Block User From TTS';
+            // on click, send block user command to server
+            blockUserButton.onclick = () => {
+                blockedUsers.add(data.user);
+            };
+
+            // Group 2: Always TTS and Block in a column
+            const buttonsGroup2 = document.createElement('div');
+            buttonsGroup2.className = 'message-buttons-group-2';
+            buttonsGroup2.appendChild(addToPermanentTtsButton);
+            buttonsGroup2.appendChild(blockUserButton);
             
             contentDiv.appendChild(usernameSpan);
             contentDiv.appendChild(textSpan);
             contentDiv.appendChild(timestampSpan);
-            
+
+            // Create main buttons container
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'message-buttons';
+            buttonsContainer.appendChild(buttonsGroup1);
+            buttonsContainer.appendChild(buttonsGroup2);
+
             messageDiv.appendChild(avatarDiv);
             messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(buttonsContainer);
             
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
