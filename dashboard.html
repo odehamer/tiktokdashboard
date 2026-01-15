@@ -24,16 +24,18 @@
             
             <div class="controls-section">
                 <div class="controls-container">
-                    <h3>TTS Controls</h3>
+                    <h3>Text-To-Speech Settings</h3>
                     <div class="button-group">
                         <input type="checkbox" id="toggleTts" checked/>
                         <label for="toggleTts">TTS on</label>
+                        <span class="tooltip-text">Enable or disable text-to-speech entirely</span>
                     </div>
 
                     <div class="button-group" style="flex-direction: column; align-items: flex-start;">
                         <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
                             <input type="checkbox" id="ttsToggleDonations"/>
                             <label for="ttsToggleDonations">TTS for gifts</label>
+                            <span class="tooltip-text">After a user sends a chosen number of coins, their message will be read aloud</span>
                         </div>
                         <div id="coinsSliderContainer" style="width: 100%; display: none;">
                             <label for="coinsForTts" id="coinsValueDisplay">1 coin per TTS</label>
@@ -43,8 +45,9 @@
 
                     <div class="button-group" style="flex-direction: column; align-items: flex-start;">
                         <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                            <input type="checkbox" id="ttsToggleForLikes" title="Chatters will receive tts for each like"/>
-                            <label for="ttsToggleForLikes" title="Chatters will receive tts for each like">TTS for likes</label>
+                            <input type="checkbox" id="ttsToggleForLikes"/>
+                            <label for="ttsToggleForLikes">TTS for likes</label>
+                            <span class="tooltip-text">After a user sends a chosen number of likes, their message will be read aloud</span>
                         </div>
                         <div id="likesSliderContainer" style="width: 100%; margin-top: 2px; display: none;">
                             <label for="likesForTts" id="likesValueDisplay">Likes per TTS:</label>
@@ -58,28 +61,32 @@
                     </div>
 
                     <div class="button-group">
-                        <input type="checkbox" id="ttsToggleFollow" title="New Follower's next message will be read aloud"/>
-                        <label for="ttsToggleFollow" title="New Follower's next message will be read aloud">TTS after follow</label>
+                        <input type="checkbox" id="ttsToggleFollow"/>
+                        <label for="ttsToggleFollow">TTS after follow</label>
+                        <span class="tooltip-text">New followers' next message will be read aloud</span>
                     </div>
 
                     <div class="button-group">
                         <input type="checkbox" id="ttsForFollowers"/>
                         <label for="ttsForFollowers">TTS for followers</label>
+                        <span class="tooltip-text">All followers' messages will be read aloud</span>
                     </div>
                     
                     <div class="button-group">
                         <input type="checkbox" id="ttsForEveryone"/>
                         <label for="ttsForEveryone">TTS for everyone</label>
+                        <span class="tooltip-text">All messages will be read aloud</span>
                     </div>
 
                     <div class="button-group">
                         <input type="checkbox" id="readEmojis" checked/>
                         <label for="readEmojis">Read Emojis</label>
+                        <span class="tooltip-text">Include emojis when reading messages aloud</span>
                     </div>
                     
                     <button id="cancelTtsButton" class="action-button">Stop Messages</button>
                 </div>
-                
+
                 <div class="controls-container">
                     <h3>Voice Settings</h3>
                     <div class="voice-select-group">
@@ -87,25 +94,29 @@
                         <select id="voices">
                             <option value="">Default</option>
                         </select>
+                        <span class="tooltip-text">Choose the voice for text-to-speech (voice options depend on your browser and operating system)</span>
                     </div>
 
                     <div class="voice-select-group">
                         <label for="ttsVolume">Volume</label>
                         <input type="range" id="ttsVolume" min="0" max="1" value="1" step="0.1">
+                        <span class="tooltip-text">Adjust the volume of the text-to-speech voice</span>
                     </div>
 
                     <div class="voice-select-group">
                         <label for="ttsPitch">Pitch</label>
                         <input type="range" id="ttsPitch" min="0.1" max="2" value="1" step="0.1">
+                        <span class="tooltip-text">Adjust the pitch of the text-to-speech voice</span>
                     </div>
 
                     <div class="voice-select-group">
                         <label for="ttsRate">Speed</label>
                         <input type="range" id="ttsRate" min="0.1" max="2" value="1" step="0.1">
+                        <span class="tooltip-text">Adjust the speed of the text-to-speech voice</span>
                     </div>
 
                     <button id="previewVoiceButton" class="action-button" onclick="speak('Hi, I am your selected voice.')">Preview Voice</button>
-
+                    
                 </div>
 
                 <div class="controls-container">
@@ -113,11 +124,13 @@
                         <div class="button-group">
                             <input type="checkbox" id="showLikes" checked/>
                             <label for="showLikes">Show Likes</label>
+                            <span class="tooltip-text">Toggle the display of like messages in the chat (does not affect text-to-speech)</span>
                         </div>
 
                         <div class="voice-select-group">
                             <label for="giftIconSize">Gift Icon Size</label>
                             <input type="range" id="giftIconSize" min="20" max="100" value="40" step="5">
+                            <span class="tooltip-text">Adjust the size of gift icons in the chat</span>
                         </div>
                 </div>
                 
@@ -147,6 +160,21 @@
                         <label>💲 Estimated Earnings per Hour</label>
                         <div class="stat-value" id="estimatedEarningsPerHour">$0.00</div>
                     </div>
+                </div>
+
+                <div class="controls-container">
+                    <h3>Chatters</h3>
+
+                    <div class="chatters-list-section">
+                        <label>Permanent TTS Chatters</label>
+                        <ul id="permanentTtsChatters" class="chatters-list"></ul>
+                    </div>
+
+                    <div class="chatters-list-section">
+                        <label>Blocked Chatters</label>
+                        <ul id="blockedChatters" class="chatters-list"></ul>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -319,9 +347,16 @@
             // buttonsContainer.className = 'message-buttons';
 
             // read comment button
+            const readMessageButtonDiv = document.createElement('div');
+            readMessageButtonDiv.style.position = 'relative';
             const readMessageButton = document.createElement('button');
             readMessageButton.className = 'read-message-button message-button';
-            readMessageButton.textContent = 'Read';
+            readMessageButton.textContent = '🗣️';
+            const readMessageTooltip = document.createElement('span');
+            readMessageTooltip.className = 'tooltip-text';
+            readMessageTooltip.textContent = 'Read this message aloud';
+            readMessageButtonDiv.appendChild(readMessageButton);
+            readMessageButtonDiv.appendChild(readMessageTooltip);
             // on click, speak the message
             readMessageButton.onclick = () => {
                 speak(data.comment);
@@ -331,7 +366,10 @@
             // add to tts queue button
             const addToTtsButton = document.createElement('button');
             addToTtsButton.className = 'add-to-tts-button message-button';
-            addToTtsButton.textContent = 'Add User to Queue';
+            addToTtsButton.textContent = '➕';
+            const addToTtsTooltip = document.createElement('span');
+            addToTtsTooltip.className = 'tooltip-text';
+            addToTtsTooltip.textContent = 'Give user one text-to-speech message';
             // on click, add user to tts queue
             addToTtsButton.onclick = () => {
                 ttsQueue.push(data.user);
@@ -340,31 +378,53 @@
             // Group 1: Read and Add buttons in a row
             const buttonsGroup1 = document.createElement('div');
             buttonsGroup1.className = 'message-buttons-group-1';
-            buttonsGroup1.appendChild(readMessageButton);
-            buttonsGroup1.appendChild(addToTtsButton);
+            buttonsGroup1.appendChild(readMessageButtonDiv);
+            const addToTtsDiv = document.createElement('div');
+            addToTtsDiv.style.position = 'relative';
+            addToTtsDiv.appendChild(addToTtsButton);
+            addToTtsDiv.appendChild(addToTtsTooltip);
+            buttonsGroup1.appendChild(addToTtsDiv);
 
             const addToPermanentTtsButton = document.createElement('button');
             addToPermanentTtsButton.className = 'add-to-permanent-tts-button message-button';
-            addToPermanentTtsButton.textContent = 'Always TTS This User';
+            addToPermanentTtsButton.textContent = '⭐';
+            const permanentTtsTooltip = document.createElement('span');
+            permanentTtsTooltip.className = 'tooltip-text';
+            permanentTtsTooltip.textContent = 'Always read this user\'s messages aloud';
             // on click, add user to permanent tts list
             addToPermanentTtsButton.onclick = () => {
+                if (permanentTtsUsers.has(data.user)) return;
                 permanentTtsUsers.add(data.user);
+                updatePermanentTtsChattersList();
             };
 
             // block user button
             const blockUserButton = document.createElement('button');
             blockUserButton.className = 'block-user-button message-button';
-            blockUserButton.textContent = 'Block User From TTS';
+            blockUserButton.textContent = '❌';
+            const blockUserTooltip = document.createElement('span');
+            blockUserTooltip.className = 'tooltip-text';
+            blockUserTooltip.textContent = 'This user\'s messages will not be read aloud';
             // on click, send block user command to server
             blockUserButton.onclick = () => {
+                if (blockedUsers.has(data.user)) return;
                 blockedUsers.add(data.user);
+                updateBlockedChattersList();
             };
 
             // Group 2: Always TTS and Block in a column
             const buttonsGroup2 = document.createElement('div');
             buttonsGroup2.className = 'message-buttons-group-2';
-            buttonsGroup2.appendChild(addToPermanentTtsButton);
-            buttonsGroup2.appendChild(blockUserButton);
+            const permanentTtsDiv = document.createElement('div');
+            permanentTtsDiv.style.position = 'relative';
+            permanentTtsDiv.appendChild(addToPermanentTtsButton);
+            permanentTtsDiv.appendChild(permanentTtsTooltip);
+            buttonsGroup2.appendChild(permanentTtsDiv);
+            const blockUserDiv = document.createElement('div');
+            blockUserDiv.style.position = 'relative';
+            blockUserDiv.appendChild(blockUserButton);
+            blockUserDiv.appendChild(blockUserTooltip);
+            buttonsGroup2.appendChild(blockUserDiv);
             
             contentDiv.appendChild(usernameSpan);
             contentDiv.appendChild(textSpan);
@@ -384,7 +444,12 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
             
             if (ttsOn) {
-                if (everyoneHasTts) {
+                if (blockedUsers.has(data.user)) {
+                    return;
+                } else if (everyoneHasTts) {
+                    messageDiv.style.backgroundColor = '#fff0f6';
+                    speak(data.comment);
+                } else if (permanentTtsUsers.has(data.user)) {
                     messageDiv.style.backgroundColor = '#fff0f6';
                     speak(data.comment);
                 } else if (followersHaveTts && data.isFollower) {
@@ -495,6 +560,7 @@
         // tts for donations toggle
         const ttsToggleDonations = document.getElementById('ttsToggleDonations');
         const coinsSliderContainer = document.getElementById('coinsSliderContainer');
+        
         ttsToggleDonations.addEventListener('change', (e) => {
             ttsForDonations = e.target.checked;
             coinsSliderContainer.style.display = e.target.checked ? 'block' : 'none';
@@ -663,6 +729,40 @@
         setInterval(() => {
             estimatedEarningsPerHourDiv.textContent = `$${((diamondCount * 0.005) / (elapsedSeconds / 3600)).toFixed(2)}`;
         }, 60000);
+
+        // update permanent tts chatters list
+        function updatePermanentTtsChattersList() {
+            const permanentTtsChattersList = document.getElementById('permanentTtsChatters');
+            permanentTtsChattersList.innerHTML = '';
+            permanentTtsUsers.forEach((user) => {
+                const li = document.createElement('li');
+                const removeUserButton = document.createElement('button');
+                removeUserButton.textContent = user + ' ❌';
+                li.append(removeUserButton);
+                removeUserButton.onclick = () => {
+                    permanentTtsUsers.delete(user);
+                    updatePermanentTtsChattersList();
+                };
+                permanentTtsChattersList.appendChild(li);
+            });
+        }
+
+        // update blocked chatters list
+        function updateBlockedChattersList() {
+            const blockedChattersList = document.getElementById('blockedChatters');
+            blockedChattersList.innerHTML = '';
+            blockedUsers.forEach((user) => {
+                const li = document.createElement('li');
+                const removeUserButton = document.createElement('button');
+                removeUserButton.textContent = user + ' ❌';
+                li.append(removeUserButton);
+                removeUserButton.onclick = () => {
+                    blockedUsers.delete(user);
+                    updateBlockedChattersList();
+                };
+                blockedChattersList.appendChild(li);
+            });
+        }  
 
     </script>
 </body>
